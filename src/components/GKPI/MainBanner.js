@@ -38,6 +38,10 @@ const MainBanner = () => {
                       <i className='flaticon-right'></i>
                       About Us <span></span>
                     </Link>
+                    <Link to='/contact' className='default-btn ml-3'>
+                      <i className='flaticon-right'></i>
+                      Contact GKP Solutions <span></span>
+                    </Link>
                     
                   </div>
                 </ReactWOW>

@@ -87,7 +87,13 @@ const NavbarTwo = () => {
 
                   <div className='others-option d-flex align-items-center'>
                     <div className='option-item'>
-               
+                      <Link
+                        to='/contact'
+                        onClick={() => setCollapsed(true)}
+                        className='default-btn'>
+                        <i className='flaticon-right'></i>
+                        Contact GKP Solutions <span></span>
+                      </Link>
                     </div>
                   </div>
                 </div>
