@@ -1,23 +1,31 @@
 // Production server for the GKP Solutions website.
 // - Serves the built Gatsby site from ./public
 // - POST /api/contact saves a request to Postgres and emails a notification
+// - /admin is a password-protected page to review submissions
 //
 // Environment variables (set in Railway > Variables):
 //   DATABASE_URL    Postgres connection string (use ${{Postgres.DATABASE_URL}})
-//   RESEND_API_KEY  API key from resend.com (optional; no email is sent without it)
-//   NOTIFY_EMAIL    Where notifications go (default gary@gkpsolutions.net)
+//   RESEND_API_KEY  API key from resend.com (no email is sent without it)
+//   NOTIFY_EMAIL    Where notifications go (default gary@gkpsolutions.net; comma-separate several)
 //   EMAIL_FROM      Sender, e.g. "GKP Website <website@gkpsolutions.net>"
 //                   (default uses Resend's test sender until your domain is verified)
+//   ADMIN_PASSWORD  Password for /admin (the admin page is disabled until this is set)
+//   ADMIN_USER      Username for /admin (default "admin")
 //   PORT            Set by Railway
 
 const path = require('path')
 const fs = require('fs')
 const express = require('express')
 const { Pool } = require('pg')
+const adminRouter = require('./admin')
 
 const PORT = process.env.PORT || 8080
-const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'gary@gkpsolutions.net'
-const EMAIL_FROM = process.env.EMAIL_FROM || 'GKP Website <onboarding@resend.dev>'
+const config = () => ({
+  apiKey: (process.env.RESEND_API_KEY || '').trim(),
+  notify: (process.env.NOTIFY_EMAIL || 'gary@gkpsolutions.net')
+    .split(',').map((s) => s.trim()).filter(Boolean),
+  from: (process.env.EMAIL_FROM || 'GKP Website <onboarding@resend.dev>').trim(),
+})
 
 const pool = process.env.DATABASE_URL
   ? new Pool({
@@ -49,13 +57,19 @@ async function initDb() {
       ip            TEXT,
       user_agent    TEXT
     )`)
+  // Columns added later (safe to run every start)
+  await pool.query(`
+    ALTER TABLE contact_requests
+      ADD COLUMN IF NOT EXISTS status       TEXT NOT NULL DEFAULT 'new',
+      ADD COLUMN IF NOT EXISTS email_status TEXT,
+      ADD COLUMN IF NOT EXISTS email_detail TEXT`)
   console.log('Database ready (contact_requests table).')
 }
 
 // --- helpers ---------------------------------------------------------------
 const clean = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 const escapeHtml = (s) =>
-  String(s).replace(/[&<>"']/g, (c) =>
+  String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -69,35 +83,45 @@ function rateLimited(ip) {
   return recent.length > 5
 }
 
-async function sendEmail(r) {
-  if (!process.env.RESEND_API_KEY) return
+// Sends through Resend. Always resolves to { ok, detail } so callers can record what happened.
+async function resendSend({ subject, html, replyTo }) {
+  const c = config()
+  if (!c.apiKey) return { ok: false, detail: 'RESEND_API_KEY is not set on this service.' }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${c.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: c.from,
+        to: c.notify,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+        subject,
+        html,
+      }),
+    })
+    const text = await res.text()
+    if (!res.ok) return { ok: false, detail: `Resend ${res.status}: ${text}` }
+    let id = ''
+    try { id = JSON.parse(text).id || '' } catch (e) {}
+    return { ok: true, detail: `Accepted by Resend (id ${id}) → ${c.notify.join(', ')}` }
+  } catch (err) {
+    return { ok: false, detail: `Could not reach Resend: ${err.message}` }
+  }
+}
+
+function notificationHtml(r) {
   const rows = [
     ['Name', r.name], ['Email', r.email], ['Phone', r.phone],
     ['Business', r.businessName], ['Job title', r.jobTitle],
     ['Location', r.location], ['Interested in', r.interest],
   ]
-  const html = `
-    <h2>New contact request from gkpsolutions website</h2>
+  return `
+    <h2>New contact request from the GKP Solutions website</h2>
     <table cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif">
       ${rows.map(([k, v]) => `<tr><td style="color:#666">${k}</td><td><b>${escapeHtml(v || '—')}</b></td></tr>`).join('')}
     </table>
     <h3 style="font-family:Arial,sans-serif">Message</h3>
     <p style="font-family:Arial,sans-serif;white-space:pre-wrap">${escapeHtml(r.message)}</p>`
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: EMAIL_FROM,
-      to: NOTIFY_EMAIL.split(',').map((s) => s.trim()),
-      reply_to: r.email,
-      subject: `Website inquiry: ${r.name} – ${r.businessName}`,
-      html,
-    }),
-  })
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
 }
 
 // --- app -------------------------------------------------------------------
@@ -127,37 +151,44 @@ app.post('/api/contact', async (req, res) => {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' })
   }
 
-  let saved = false
+  let id = null
   if (pool) {
     try {
-      await pool.query(
+      const { rows } = await pool.query(
         `INSERT INTO contact_requests
           (name, email, phone, business_name, job_title, location, interest, message, ip, user_agent)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
         [r.name, r.email, r.phone, r.businessName, r.jobTitle, r.location,
          r.interest, r.message, req.ip, clean(req.get('user-agent'), 500)])
-      saved = true
+      id = rows[0].id
     } catch (err) {
       console.error('DB insert failed:', err.message)
     }
   }
 
-  let emailed = false
-  try {
-    await sendEmail(r)
-    emailed = !!process.env.RESEND_API_KEY
-  } catch (err) {
-    console.error('Email failed:', err.message)
+  const mail = await resendSend({
+    subject: `Website inquiry: ${r.name} – ${r.businessName}`,
+    html: notificationHtml(r),
+    replyTo: r.email,
+  })
+  console.log(`Contact request from ${r.email}: saved=${id !== null}, email ${mail.ok ? 'OK' : 'FAILED'} - ${mail.detail}`)
+
+  if (id !== null) {
+    await pool.query(
+      'UPDATE contact_requests SET email_status=$1, email_detail=$2 WHERE id=$3',
+      [mail.ok ? 'sent' : 'failed', mail.detail.slice(0, 1000), id]
+    ).catch((err) => console.error('Email status update failed:', err.message))
   }
 
-  if (!saved && !emailed) {
+  if (id === null && !mail.ok) {
     return res.status(500).json({ error: 'Sorry, we could not send your request. Please email gary@gkpsolutions.net.' })
   }
-  console.log(`Contact request from ${r.email} (saved=${saved}, emailed=${emailed})`)
   res.json({ ok: true })
 })
 
 app.get('/healthz', (req, res) => res.send('ok'))
+
+app.use('/admin', adminRouter({ pool, config, resendSend, escapeHtml }))
 
 // Static Gatsby site
 const publicDir = path.join(__dirname, 'public')
@@ -170,4 +201,9 @@ app.use((req, res) => {
 
 initDb()
   .catch((err) => console.error('Database init failed:', err.message))
-  .finally(() => app.listen(PORT, '0.0.0.0', () => console.log(`GKP site listening on ${PORT}`)))
+  .finally(() => {
+    const c = config()
+    console.log(`Email config: key ${c.apiKey ? 'set' : 'MISSING'}, from "${c.from}", to ${c.notify.join(', ')}`)
+    console.log(`Admin page: ${process.env.ADMIN_PASSWORD ? 'enabled at /admin' : 'disabled (set ADMIN_PASSWORD)'}`)
+    app.listen(PORT, '0.0.0.0', () => console.log(`GKP site listening on ${PORT}`))
+  })
