@@ -25,17 +25,6 @@ const styles = {
   },
   statLabel: { fontSize: 14, color: '#6b7280', marginBottom: 4 },
   statValue: { fontSize: 26, fontWeight: 700, lineHeight: 1.2, color: '#1f2430' },
-  segment: (on) => ({
-    flex: 1,
-    padding: '12px 10px',
-    borderRadius: 8,
-    border: `2px solid ${on ? ACCENT : '#e5e7eb'}`,
-    background: on ? '#fff4ef' : '#fff',
-    fontWeight: 600,
-    color: on ? '#b4410f' : '#1f2430',
-    cursor: 'pointer',
-    textAlign: 'center',
-  }),
 }
 
 const SavingsCalculator = () => {
@@ -122,15 +111,13 @@ const SavingsCalculator = () => {
                     </div>
                   </div>
                   <div className='col-12'>
-                    <span style={styles.label}>Where would your team be?</span>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }} role='radiogroup'>
+                    <label htmlFor='region' style={styles.label}>Where would your team be?</label>
+                    <select id='region' className='form-control' value={region}
+                      onChange={(e) => setRegion(e.target.value)}>
                       {Object.entries(rates.regions).map(([key, label]) => (
-                        <button key={key} type='button' role='radio' aria-checked={region === key}
-                          style={styles.segment(region === key)} onClick={() => setRegion(key)}>
-                          {label}
-                        </button>
+                        <option key={key} value={key}>{label}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                 </div>
               </div>
