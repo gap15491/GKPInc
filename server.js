@@ -331,6 +331,39 @@ app.post('/api/savings-report', async (req, res) => {
   res.json({ ok: true })
 })
 
+// Where GKP talent is placed today, for the Savings Calculator chart.
+// Reads country counts from the GKP Placements app and shares only percentages publicly.
+// Needs PLACEMENTS_STATS_URL (e.g. https://<placements-app>/api/public/placement-countries)
+// and PLACEMENTS_STATS_TOKEN (same value as PUBLIC_STATS_TOKEN on the placements app).
+let placementCache = { at: 0, data: null }
+app.get('/api/placement-countries', async (req, res) => {
+  const url = (process.env.PLACEMENTS_STATS_URL || '').trim()
+  const token = (process.env.PLACEMENTS_STATS_TOKEN || '').trim()
+  if (!url || !token) return res.json({ countries: [] })
+  if (placementCache.data && Date.now() - placementCache.at < 60 * 60 * 1000) {
+    return res.json(placementCache.data)
+  }
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const { countries = [], total = 0 } = await r.json()
+    const TOP = 6
+    const top = countries.slice(0, TOP)
+    const rest = countries.slice(TOP).reduce((n, c) => n + c.count, 0)
+    const rows = [...top, ...(rest ? [{ country: 'Other countries', count: rest }] : [])]
+    const data = {
+      countries: total
+        ? rows.map((c) => ({ country: String(c.country).slice(0, 40), share: Math.max(1, Math.round((c.count / total) * 100)) }))
+        : [],
+    }
+    placementCache = { at: Date.now(), data }
+    res.json(data)
+  } catch (err) {
+    console.error('Placement stats unavailable:', err.message)
+    res.json(placementCache.data || { countries: [] })
+  }
+})
+
 app.get('/healthz', (req, res) => res.send('ok'))
 
 app.use('/admin', adminRouter({ pool, config, resendSend, escapeHtml }))

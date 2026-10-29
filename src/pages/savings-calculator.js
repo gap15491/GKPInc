@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
 import Navbar from '../components/App/Navbar'
@@ -33,6 +33,15 @@ const SavingsCalculator = () => {
   const [team, setTeam] = useState('3')
   const [lead, setLead] = useState({ name: '', email: '', company: '', website: '' })
   const [status, setStatus] = useState({ state: 'idle', text: '' })
+  const [placed, setPlaced] = useState([])
+
+  // Live "where we place talent" numbers from the GKP Placements app (via server.js)
+  useEffect(() => {
+    fetch('/api/placement-countries')
+      .then((r) => (r.ok ? r.json() : { countries: [] }))
+      .then((d) => setPlaced(Array.isArray(d.countries) ? d.countries : []))
+      .catch(() => {})
+  }, [])
 
   const result = calcSavings(roleId, region, team)
 
@@ -118,6 +127,32 @@ const SavingsCalculator = () => {
                         <option key={key} value={key}>{label}</option>
                       ))}
                     </select>
+                    <p style={{ margin: '10px 0 0', fontSize: 14, color: '#6b7280', lineHeight: 1.6 }}>
+                      <i className='bx bx-world' style={{ color: ACCENT, marginRight: 6 }}></i>
+                      These are our leading locations today. GKP also deploys talent in{' '}
+                      <b style={{ color: '#1f2430' }}>150+ other countries</b>.{' '}
+                      <Link to='/contact'>Ask us about any location</Link>.
+                    </p>
+
+                    {placed.length > 0 && (
+                      <div style={{ marginTop: 18 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
+                          Where GKP talent is placed today
+                        </div>
+                        {placed.map((c) => (
+                          <div key={c.country} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <div style={{ width: 130, flex: 'none', fontSize: 14 }}>{c.country}</div>
+                            <div style={{ flex: 1, background: '#f1f2f5', borderRadius: 6, height: 12, overflow: 'hidden' }}>
+                              <div style={{ width: `${c.share}%`, background: ACCENT, height: '100%', borderRadius: 6 }} />
+                            </div>
+                            <div style={{ width: 40, flex: 'none', textAlign: 'right', fontSize: 14, color: '#6b7280' }}>
+                              {c.share}%
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: 12, color: '#9ca3af' }}>Share of current GKP placements by country.</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
