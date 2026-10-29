@@ -11,17 +11,21 @@ const NavbarTwo = () => {
         setCollapsed(!collapsed);
     }
 
+    // Runs once when the page loads (the empty [] below). Without it, this ran
+    // after every keystroke in a form and jumped the page back to the top.
     React.useEffect(() => {
-        let elementId = document.getElementById("navbar");
-        document.addEventListener("scroll", () => {
+        const elementId = document.getElementById("navbar");
+        const onScroll = () => {
             if (window.scrollY > 170) {
                 elementId.classList.add("is-sticky");
             } else {
                 elementId.classList.remove("is-sticky");
             }
-        });
+        };
+        document.addEventListener("scroll", onScroll);
         window.scrollTo(0, 0);
-    })
+        return () => document.removeEventListener("scroll", onScroll);
+    }, [])
 
     const classOne = collapsed ? 'collapse navbar-collapse' : 'collapse navbar-collapse show';
     const classTwo = collapsed ? 'navbar-toggler navbar-toggler-right collapsed' : 'navbar-toggler navbar-toggler-right';
