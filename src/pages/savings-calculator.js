@@ -3,7 +3,7 @@ import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
-import { rates, calcSavings, money, MAX_TEAM } from '../data/savings-calc'
+import { rates, calcSavings, cleanSyncedTitles, money, MAX_TEAM, SYNCED_PREFIX } from '../data/savings-calc'
 
 const ACCENT = '#ff5d22'
 
@@ -34,16 +34,21 @@ const SavingsCalculator = () => {
   const [lead, setLead] = useState({ name: '', email: '', company: '', website: '' })
   const [status, setStatus] = useState({ state: 'idle', text: '' })
   const [placed, setPlaced] = useState([])
+  const [syncedRoles, setSyncedRoles] = useState([])
 
-  // Live "where we place talent" numbers from the GKP Placements app (via server.js)
+  // Live data from the GKP Placements app (via server.js): where talent is placed today,
+  // and the job titles currently placed (added to the Role dropdown)
   useEffect(() => {
-    fetch('/api/placement-countries')
-      .then((r) => (r.ok ? r.json() : { countries: [] }))
-      .then((d) => setPlaced(Array.isArray(d.countries) ? d.countries : []))
+    fetch('/api/placement-stats')
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((d) => {
+        setPlaced(Array.isArray(d.countries) ? d.countries : [])
+        setSyncedRoles(cleanSyncedTitles(d.roles))
+      })
       .catch(() => {})
   }, [])
 
-  const result = calcSavings(roleId, region, team)
+  const result = calcSavings(roleId, region, team, syncedRoles)
 
   const setTeamSafe = (value) => {
     const digits = value.replace(/\D/g, '').slice(0, 2)
@@ -62,7 +67,7 @@ const SavingsCalculator = () => {
       const res = await fetch('/api/savings-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...lead, roleId, region, team: result.team }),
+        body: JSON.stringify({ ...lead, roleId, region, team: result ? result.team : team }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Something went wrong.')
@@ -101,9 +106,18 @@ const SavingsCalculator = () => {
                     <label htmlFor='role' style={styles.label}>Role</label>
                     <select id='role' className='form-control' value={roleId}
                       onChange={(e) => setRoleId(e.target.value)}>
-                      {rates.roles.map((r) => (
-                        <option key={r.id} value={r.id}>{r.label}</option>
-                      ))}
+                      <optgroup label='Popular roles'>
+                        {rates.roles.map((r) => (
+                          <option key={r.id} value={r.id}>{r.label}</option>
+                        ))}
+                      </optgroup>
+                      {syncedRoles.length > 0 && (
+                        <optgroup label='Roles we place today'>
+                          {syncedRoles.map((t) => (
+                            <option key={t} value={SYNCED_PREFIX + t}>{t}</option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </div>
                   <div className='col-lg-6 col-md-12 mb-4'>

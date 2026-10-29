@@ -9,13 +9,108 @@
     "india": "India"
   },
   "roles": [
-    { "id": "python", "label": "Python Engineer",           "usSalary": 135000, "philippines": 35, "argentina": 50, "indonesia": 33, "india": 33 },
-    { "id": "ml",     "label": "Machine Learning Engineer", "usSalary": 165000, "philippines": 45, "argentina": 62, "indonesia": 43, "india": 42 },
-    { "id": "devops", "label": "DevOps / SRE Engineer",     "usSalary": 145000, "philippines": 40, "argentina": 56, "indonesia": 38, "india": 38 },
-    { "id": "azure",  "label": "Azure Cloud Developer",     "usSalary": 135000, "philippines": 38, "argentina": 52, "indonesia": 36, "india": 35 },
-    { "id": "sfqa",   "label": "Salesforce QA Engineer",    "usSalary": 105000, "philippines": 28, "argentina": 40, "indonesia": 26, "india": 26 },
-    { "id": "iam",    "label": "IAM / Security Engineer",   "usSalary": 135000, "philippines": 40, "argentina": 54, "indonesia": 38, "india": 38 },
-    { "id": "scrum",  "label": "Scrum Master",              "usSalary": 120000, "philippines": 32, "argentina": 46, "indonesia": 30, "india": 30 },
-    { "id": "oracle", "label": "Oracle ERP Specialist",     "usSalary": 135000, "philippines": 42, "argentina": 56, "indonesia": 40, "india": 38 }
-  ]
+    {
+      "id": "python",
+      "label": "Python Engineer",
+      "usSalary": 135000,
+      "philippines": 35,
+      "argentina": 50,
+      "indonesia": 33,
+      "india": 33
+    },
+    {
+      "id": "ml",
+      "label": "Machine Learning Engineer",
+      "usSalary": 165000,
+      "philippines": 45,
+      "argentina": 62,
+      "indonesia": 43,
+      "india": 42
+    },
+    {
+      "id": "devops",
+      "label": "DevOps / SRE Engineer",
+      "usSalary": 145000,
+      "philippines": 40,
+      "argentina": 56,
+      "indonesia": 38,
+      "india": 38
+    },
+    {
+      "id": "azure",
+      "label": "Azure Cloud Developer",
+      "usSalary": 135000,
+      "philippines": 38,
+      "argentina": 52,
+      "indonesia": 36,
+      "india": 35
+    },
+    {
+      "id": "sfqa",
+      "label": "Salesforce QA Engineer",
+      "usSalary": 105000,
+      "philippines": 28,
+      "argentina": 40,
+      "indonesia": 26,
+      "india": 26
+    },
+    {
+      "id": "iam",
+      "label": "IAM / Security Engineer",
+      "usSalary": 135000,
+      "philippines": 40,
+      "argentina": 54,
+      "indonesia": 38,
+      "india": 38
+    },
+    {
+      "id": "scrum",
+      "label": "Scrum Master",
+      "usSalary": 120000,
+      "philippines": 32,
+      "argentina": 46,
+      "indonesia": 30,
+      "india": 30
+    },
+    {
+      "id": "oracle",
+      "label": "Oracle ERP Specialist",
+      "usSalary": 135000,
+      "philippines": 42,
+      "argentina": 56,
+      "indonesia": 40,
+      "india": 38
+    }
+  ],
+  "syncedTitles": {
+    "_readme": "Job titles synced from the GKP Placements app are cleaned up here before they appear on the website. 'rename' maps a title as typed in Placements (any capitalization) to the name shown on the site; titles that rename to the same name are merged. 'hide' lists titles never to show. Titles not listed here appear as typed.",
+    "rename": {
+      "pyhon": "Python Engineer",
+      "mle": "Machine Learning Engineer",
+      "ml ops": "MLOps Engineer",
+      "dotnet dev": ".NET Developer",
+      ".net support": ".NET Support Engineer",
+      "qa": "QA Engineer",
+      "qa automation": "QA Automation Engineer",
+      "automation qa": "QA Automation Engineer",
+      "ba qa": "Business Analyst / QA",
+      "salesforce qa": "Salesforce QA Engineer",
+      "salesforce": "Salesforce Developer",
+      "front end developer": "Front-End Developer",
+      "front end engineer": "Front-End Developer",
+      "front-end developer": "Front-End Developer",
+      "front end redux saga": "Front-End Developer (React / Redux)",
+      "java spring boot": "Java Spring Boot Developer",
+      "sr backend dev": "Senior Backend Developer",
+      "sr full stack dev": "Senior Full-Stack Developer",
+      "cloud infra arch": "Cloud Infrastructure Architect",
+      "it lead": "IT Lead",
+      "developer": "Software Developer",
+      "oracle bsa": "Oracle Business Systems Analyst"
+    },
+    "hide": [
+      "production supervisor, casting director",
+      "linguist"
+    ]
+  }
 }

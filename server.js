@@ -21,7 +21,7 @@ const fs = require('fs')
 const express = require('express')
 const { Pool } = require('pg')
 const adminRouter = require('./admin')
-const { rates: savingsRates, calcSavings, money } = require('./src/data/savings-calc')
+const { rates: savingsRates, calcSavings, cleanSyncedTitles, money } = require('./src/data/savings-calc')
 
 const PORT = process.env.PORT || 8080
 const config = () => ({
@@ -275,7 +275,8 @@ app.post('/api/savings-report', async (req, res) => {
   const name = clean(b.name, 200)
   const email = clean(b.email, 200)
   const company = clean(b.company, 200)
-  const s = calcSavings(clean(b.roleId, 50), clean(b.region, 50), b.team)
+  const { roles: syncedRoles } = await getPlacementStats()
+  const s = calcSavings(clean(b.roleId, 100), clean(b.region, 50), b.team, syncedRoles)
   if (!name || !EMAIL_RE.test(email)) {
     return res.status(400).json({ error: 'Please enter your name and a valid email.' })
   }
@@ -331,22 +332,23 @@ app.post('/api/savings-report', async (req, res) => {
   res.json({ ok: true })
 })
 
-// Where GKP talent is placed today, for the Savings Calculator chart.
-// Reads country counts from the GKP Placements app and shares only percentages publicly.
+// Live data from the GKP Placements app for the Savings Calculator:
+//  - countries: share of current placements by country (percentages only, never counts)
+//  - roles: job titles currently placed, added to the calculator's Role dropdown
 // Needs PLACEMENTS_STATS_URL (e.g. https://<placements-app>/api/public/placement-countries)
 // and PLACEMENTS_STATS_TOKEN (same value as PUBLIC_STATS_TOKEN on the placements app).
+// Refreshed at most once an hour; if the app can't be reached, the last good copy is used.
 let placementCache = { at: 0, data: null }
-app.get('/api/placement-countries', async (req, res) => {
+async function getPlacementStats() {
+  const empty = { countries: [], roles: [] }
   const url = (process.env.PLACEMENTS_STATS_URL || '').trim()
   const token = (process.env.PLACEMENTS_STATS_TOKEN || '').trim()
-  if (!url || !token) return res.json({ countries: [] })
-  if (placementCache.data && Date.now() - placementCache.at < 60 * 60 * 1000) {
-    return res.json(placementCache.data)
-  }
+  if (!url || !token) return empty
+  if (placementCache.data && Date.now() - placementCache.at < 60 * 60 * 1000) return placementCache.data
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    const { countries = [], total = 0 } = await r.json()
+    const { countries = [], total = 0, roles = [] } = await r.json()
     const TOP = 6
     const top = countries.slice(0, TOP)
     const rest = countries.slice(TOP).reduce((n, c) => n + c.count, 0)
@@ -355,14 +357,19 @@ app.get('/api/placement-countries', async (req, res) => {
       countries: total
         ? rows.map((c) => ({ country: String(c.country).slice(0, 40), share: Math.max(1, Math.round((c.count / total) * 100)) }))
         : [],
+      roles: cleanSyncedTitles(roles),
     }
     placementCache = { at: Date.now(), data }
-    res.json(data)
+    return data
   } catch (err) {
     console.error('Placement stats unavailable:', err.message)
-    res.json(placementCache.data || { countries: [] })
+    return placementCache.data || empty
   }
-})
+}
+
+const sendPlacementStats = async (req, res) => res.json(await getPlacementStats())
+app.get('/api/placement-stats', sendPlacementStats)
+app.get('/api/placement-countries', sendPlacementStats) // older name, kept so nothing breaks
 
 app.get('/healthz', (req, res) => res.send('ok'))
 
