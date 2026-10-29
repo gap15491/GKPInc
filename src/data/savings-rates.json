@@ -112,5 +112,100 @@
       "production supervisor, casting director",
       "linguist"
     ]
+  },
+  "families": {
+    "_readme": "Rate groups used ONLY for job titles synced from the Placements app (not shown as their own choices). Each synced title is matched to one of these, or to a Popular role, by keywords in src/data/savings-calc.js. Same columns as 'roles'.",
+    "list": [
+      {
+        "id": "architect",
+        "label": "Solutions / Cloud Architect",
+        "usSalary": 175000,
+        "philippines": 50,
+        "argentina": 68,
+        "indonesia": 47,
+        "india": 45
+      },
+      {
+        "id": "mobile",
+        "label": "Mobile Developer",
+        "usSalary": 145000,
+        "philippines": 40,
+        "argentina": 55,
+        "indonesia": 38,
+        "india": 37
+      },
+      {
+        "id": "frontend",
+        "label": "Front-End Developer",
+        "usSalary": 125000,
+        "philippines": 32,
+        "argentina": 47,
+        "indonesia": 30,
+        "india": 30
+      },
+      {
+        "id": "backend",
+        "label": "Backend Developer (Java / .NET)",
+        "usSalary": 140000,
+        "philippines": 37,
+        "argentina": 52,
+        "indonesia": 35,
+        "india": 34
+      },
+      {
+        "id": "fullstack",
+        "label": "Full-Stack Developer",
+        "usSalary": 138000,
+        "philippines": 36,
+        "argentina": 51,
+        "indonesia": 34,
+        "india": 33
+      },
+      {
+        "id": "data",
+        "label": "Data / Database Engineer",
+        "usSalary": 140000,
+        "philippines": 38,
+        "argentina": 54,
+        "indonesia": 36,
+        "india": 35
+      },
+      {
+        "id": "pm",
+        "label": "Program / Project Manager",
+        "usSalary": 140000,
+        "philippines": 38,
+        "argentina": 55,
+        "indonesia": 36,
+        "india": 35
+      },
+      {
+        "id": "analyst",
+        "label": "Business / Systems Analyst",
+        "usSalary": 100000,
+        "philippines": 28,
+        "argentina": 42,
+        "indonesia": 26,
+        "india": 25
+      },
+      {
+        "id": "support",
+        "label": "IT Support / Administrator",
+        "usSalary": 85000,
+        "philippines": 22,
+        "argentina": 34,
+        "indonesia": 20,
+        "india": 19
+      },
+      {
+        "id": "writer",
+        "label": "Technical Writer",
+        "usSalary": 90000,
+        "philippines": 25,
+        "argentina": 38,
+        "indonesia": 23,
+        "india": 22
+      }
+    ]
   }
 }

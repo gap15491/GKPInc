@@ -11,24 +11,40 @@ const rates = require('./savings-rates.json')
 const MAX_TEAM = 50
 const SYNCED_PREFIX = 't:' // role keys for synced titles look like "t:Senior Java Developer"
 
+// Rate groups a synced title can match: the Popular roles plus the extra "families"
+// in savings-rates.json (front-end, mobile, architect, support, ...).
+const BASES = [...rates.roles, ...((rates.families && rates.families.list) || [])]
+
 // First matching rule wins, so more specific patterns come first.
 const RULES = [
   [/\bqa\b|quality|test|sdet/i, 'sfqa'],
   [/machine learning|mlops|\bml\b|\bai\b|data scien|deep learning|\bllm\b|nlp|computer vision/i, 'ml'],
+  [/architect/i, 'architect'],
   [/devops|\bsre\b|site reliab|platform eng|kubernetes|infrastructure|release eng|build eng/i, 'devops'],
   [/\biam\b|identity|security|cyber|okta|sailpoint|ping\b|cyberark|soc\b|penetration/i, 'iam'],
-  [/scrum|agile|project manag|program manag|delivery manag|product owner|product manag|engagement manag|\bpmo?\b|analyst|\bba\b/i, 'scrum'],
+  [/scrum|agile|product owner/i, 'scrum'],
+  [/project manag|program manag|delivery manag|engagement manag|product manag|\bpmo?\b/i, 'pm'],
   [/oracle|\berp\b|\bsap\b|netsuite|workday|peoplesoft|dynamics|\bebs\b|jd ?edwards/i, 'oracle'],
+  [/analyst|\bba\b|\bbsa\b/i, 'analyst'],
+  [/\bios\b|android|mobile|swift|kotlin|flutter|react native/i, 'mobile'],
+  [/front[\s-]?end|\bui\b|\bux\b|react|angular|vue|javascript|typescript/i, 'frontend'],
+  [/full[\s-]?stack/i, 'fullstack'],
+  [/data eng|database|\bdba\b|\bsql\b|postgres|\betl\b|\bgis\b|data warehouse|snowflake|databricks/i, 'data'],
   [/azure|\baws\b|\bgcp\b|cloud/i, 'azure'],
+  [/support|help ?desk|technician|administrator|\badmin\b/i, 'support'],
+  [/back[\s-]?end|\bapi\b|java|\.net|dotnet|c#|spring|golang|\bgo\b|ruby|php|node/i, 'backend'],
+  [/writer|documentation/i, 'writer'],
+  [/python|django|flask/i, 'python'],
 ]
 const DEFAULT_ROLE = 'python' // general software engineering rates
 
-const SENIOR = /\b(senior|sr\.?|lead|principal|staff|architect|head|director)\b/i
+const SENIOR = /\b(senior|sr\.?|lead|principal|staff|head|director)\b/i
 const JUNIOR = /\b(junior|jr\.?|associate|entry|intern|trainee)\b/i
 
 function baseRoleFor(title) {
   const hit = RULES.find(([re]) => re.test(title))
-  return rates.roles.find((r) => r.id === (hit ? hit[1] : DEFAULT_ROLE))
+  const id = hit ? hit[1] : DEFAULT_ROLE
+  return BASES.find((r) => r.id === id) || BASES.find((r) => r.id === DEFAULT_ROLE)
 }
 
 function seniorityFactor(title) {
