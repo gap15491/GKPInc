@@ -1,6 +1,9 @@
 // Production server for the GKP Solutions website.
 // - Serves the built Gatsby site from ./public
-// - POST /api/contact saves a request to Postgres and emails a notification
+// - POST /api/contact saves a request to Postgres, emails a notification, and sends
+//   the visitor a confirmation ("auto-reply") from Gary
+// - POST /api/savings-report emails a Savings Calculator breakdown to the visitor and
+//   saves them as a lead (rates are in src/data/savings-rates.json)
 // - /admin is a password-protected page to review submissions
 //
 // Environment variables (set in Railway > Variables):
@@ -18,6 +21,7 @@ const fs = require('fs')
 const express = require('express')
 const { Pool } = require('pg')
 const adminRouter = require('./admin')
+const { rates: savingsRates, calcSavings, money } = require('./src/data/savings-calc')
 
 const PORT = process.env.PORT || 8080
 const config = () => ({
@@ -84,16 +88,18 @@ function rateLimited(ip) {
 }
 
 // Sends through Resend. Always resolves to { ok, detail } so callers can record what happened.
-async function resendSend({ subject, html, replyTo }) {
+// By default it notifies Gary (NOTIFY_EMAIL); pass `to`/`from` to email a visitor instead.
+async function resendSend({ subject, html, replyTo, to, from }) {
   const c = config()
+  const recipients = to ? [].concat(to) : c.notify
   if (!c.apiKey) return { ok: false, detail: 'RESEND_API_KEY is not set on this service.' }
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch(process.env.RESEND_API_URL || 'https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${c.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: c.from,
-        to: c.notify,
+        from: from || c.from,
+        to: recipients,
         ...(replyTo ? { reply_to: replyTo } : {}),
         subject,
         html,
@@ -103,10 +109,71 @@ async function resendSend({ subject, html, replyTo }) {
     if (!res.ok) return { ok: false, detail: `Resend ${res.status}: ${text}` }
     let id = ''
     try { id = JSON.parse(text).id || '' } catch (e) {}
-    return { ok: true, detail: `Accepted by Resend (id ${id}) → ${c.notify.join(', ')}` }
+    return { ok: true, detail: `Accepted by Resend (id ${id}) → ${recipients.join(', ')}` }
   } catch (err) {
     return { ok: false, detail: `Could not reach Resend: ${err.message}` }
   }
+}
+
+// --- emails sent to visitors, personally from Gary ----------------------------
+// Uses the address in EMAIL_FROM (e.g. gary@gkpsolutions.net) with Gary's name on it.
+// Replies go to the first NOTIFY_EMAIL address.
+const SENDER_NAME = 'Gary Peck'
+function personalSender() {
+  const c = config()
+  const m = c.from.match(/<([^>]+)>/)
+  const address = (m ? m[1] : c.from).trim()
+  return { from: `${SENDER_NAME} <${address}>`, replyTo: c.notify[0] || address }
+}
+
+const firstName = (name) => clean(name, 60).split(/\s+/)[0] || 'there'
+
+const emailShell = (inner) => `
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1f2430;max-width:600px">
+    ${inner}
+    <p style="margin-top:24px">Best regards,<br>
+      <b>Gary Peck</b><br>
+      Founder &amp; CEO, GKP Solutions, Inc.<br>
+      <a href="tel:+16159444405" style="color:#1f2430">+1 (615) 944-4405</a> ·
+      <a href="https://www.gkpsolutions.net" style="color:#ff5d22">gkpsolutions.net</a></p>
+  </div>`
+
+function autoReplyHtml(r) {
+  return emailShell(`
+    <p>Hi ${escapeHtml(firstName(r.name))},</p>
+    <p>Thank you for reaching out to GKP Solutions. I've received your request and will get back to you
+      personally within one business day.</p>
+    <p>If anything is time-sensitive, just reply to this email or call me directly at the number below.</p>
+    <p>In the meantime, you can see what an offshore or nearshore team could save you with our
+      <a href="https://www.gkpsolutions.net/savings-calculator" style="color:#ff5d22">Savings Calculator</a>.</p>`)
+}
+
+function savingsRow(label, value, bold) {
+  return `<tr><td style="padding:8px 12px;border-bottom:1px solid #eceef2;color:#6b7280">${label}</td>
+    <td style="padding:8px 12px;border-bottom:1px solid #eceef2;text-align:right">${bold ? `<b>${value}</b>` : value}</td></tr>`
+}
+
+function savingsReportHtml(name, s) {
+  return emailShell(`
+    <p>Hi ${escapeHtml(firstName(name))},</p>
+    <p>Thanks for using the GKP Solutions Savings Calculator. Here's the breakdown for your estimate:</p>
+    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:520px;border:1px solid #eceef2">
+      ${savingsRow('Role', escapeHtml(s.roleLabel))}
+      ${savingsRow('Team size', s.team)}
+      ${savingsRow('Team location', escapeHtml(s.regionLabel))}
+      ${savingsRow('US cost per person / year', money(s.usPerPerson))}
+      ${savingsRow('GKP cost per person / year', money(s.gkpPerPerson))}
+      ${savingsRow('US team cost / year', money(s.usTotal))}
+      ${savingsRow('GKP team cost / year', money(s.gkpTotal))}
+      <tr><td style="padding:10px 12px;background:#ff5d22;color:#fff"><b>Estimated savings / year</b></td>
+        <td style="padding:10px 12px;background:#ff5d22;color:#fff;text-align:right"><b>${money(s.savings)} (${s.savingsPct}%)</b></td></tr>
+    </table>
+    <p style="font-size:13px;color:#6b7280">How we estimate: US cost is a typical base salary of ${money(s.usSalary)} plus about
+      ${Math.round((savingsRates.usLoadedMultiplier - 1) * 100)}% for payroll taxes, benefits and overhead. GKP cost assumes a
+      full-time contractor at about $${s.hourlyRate}/hour (${savingsRates.hoursPerYear.toLocaleString('en-US')} hours/year).
+      Your actual quote depends on seniority, skills and engagement length.</p>
+    <p>I'd be glad to put together an exact quote and share a few sample candidate profiles for this role.
+      Just reply to this email and let me know a good time to talk.</p>`)
 }
 
 function notificationHtml(r) {
@@ -173,15 +240,93 @@ app.post('/api/contact', async (req, res) => {
   })
   console.log(`Contact request from ${r.email}: saved=${id !== null}, email ${mail.ok ? 'OK' : 'FAILED'} - ${mail.detail}`)
 
+  if (id === null && !mail.ok) {
+    return res.status(500).json({ error: 'Sorry, we could not send your request. Please email gary@gkpsolutions.net.' })
+  }
+
+  // Confirmation email to the visitor, personally from Gary
+  const sender = personalSender()
+  const reply = await resendSend({
+    to: r.email,
+    from: sender.from,
+    replyTo: sender.replyTo,
+    subject: 'Thanks for contacting GKP Solutions',
+    html: autoReplyHtml(r),
+  })
+  console.log(`Auto-reply to ${r.email}: ${reply.ok ? 'OK' : 'FAILED'} - ${reply.detail}`)
+
   if (id !== null) {
     await pool.query(
       'UPDATE contact_requests SET email_status=$1, email_detail=$2 WHERE id=$3',
-      [mail.ok ? 'sent' : 'failed', mail.detail.slice(0, 1000), id]
+      [mail.ok ? 'sent' : 'failed',
+       `Notification: ${mail.detail} | Auto-reply: ${reply.ok ? 'sent' : 'FAILED'} - ${reply.detail}`.slice(0, 1000), id]
     ).catch((err) => console.error('Email status update failed:', err.message))
   }
 
-  if (id === null && !mail.ok) {
-    return res.status(500).json({ error: 'Sorry, we could not send your request. Please email gary@gkpsolutions.net.' })
+  res.json({ ok: true })
+})
+
+// Savings Calculator: email the visitor their breakdown and record them as a lead.
+// Leads appear on the /admin page alongside contact requests ("Savings calculator").
+app.post('/api/savings-report', async (req, res) => {
+  const b = req.body || {}
+  if (clean(b.website, 200)) return res.json({ ok: true }) // honeypot
+
+  const name = clean(b.name, 200)
+  const email = clean(b.email, 200)
+  const company = clean(b.company, 200)
+  const s = calcSavings(clean(b.roleId, 50), clean(b.region, 50), b.team)
+  if (!name || !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Please enter your name and a valid email.' })
+  }
+  if (!s) return res.status(400).json({ error: 'Please choose a role and team location.' })
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' })
+  }
+
+  const summary = `Savings calculator: ${s.team} × ${s.roleLabel}, ${s.regionLabel}. ` +
+    `US ${money(s.usTotal)}/yr vs GKP ${money(s.gkpTotal)}/yr = ${money(s.savings)} saved (${s.savingsPct}%).`
+
+  let id = null
+  if (pool) {
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO contact_requests
+          (name, email, business_name, interest, message, ip, user_agent)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [name, email, company || '—', 'Savings calculator', summary, req.ip,
+         clean(req.get('user-agent'), 500)])
+      id = rows[0].id
+    } catch (err) {
+      console.error('DB insert failed:', err.message)
+    }
+  }
+
+  const sender = personalSender()
+  const report = await resendSend({
+    to: email,
+    from: sender.from,
+    replyTo: sender.replyTo,
+    subject: `Your GKP savings estimate: ${money(s.savings)} per year`,
+    html: savingsReportHtml(name, s),
+  })
+  const notify = await resendSend({
+    subject: `Savings calculator lead: ${name}${company ? ' – ' + company : ''}`,
+    replyTo: email,
+    html: notificationHtml({ name, email, businessName: company, interest: 'Savings calculator', message: summary }),
+  })
+  console.log(`Savings report to ${email}: saved=${id !== null}, report ${report.ok ? 'OK' : 'FAILED'} - ${report.detail}; notify ${notify.ok ? 'OK' : 'FAILED'}`)
+
+  if (id !== null) {
+    await pool.query(
+      'UPDATE contact_requests SET email_status=$1, email_detail=$2 WHERE id=$3',
+      [notify.ok ? 'sent' : 'failed',
+       `Notification: ${notify.detail} | Report to visitor: ${report.ok ? 'sent' : 'FAILED'} - ${report.detail}`.slice(0, 1000), id]
+    ).catch((err) => console.error('Email status update failed:', err.message))
+  }
+
+  if (!report.ok) {
+    return res.status(502).json({ error: 'Sorry, we could not send the email right now. Please try again or email gary@gkpsolutions.net.' })
   }
   res.json({ ok: true })
 })

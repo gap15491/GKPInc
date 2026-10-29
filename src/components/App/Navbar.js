@@ -79,6 +79,15 @@ const NavbarTwo = () => {
 
                     <li className='nav-item'>
                       <Link
+                        to='/savings-calculator'
+                        activeClassName='active'
+                        className='nav-link'>
+                        Savings Calculator
+                      </Link>
+                    </li>
+
+                    <li className='nav-item'>
+                      <Link
                         to='/about-us'
                         activeClassName='active'
                         className='nav-link'>

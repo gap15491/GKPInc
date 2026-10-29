@@ -1,0 +1,19 @@
+{
+  "_readme": "Edit these numbers to change the Savings Calculator. usSalary = typical US base salary (USD/yr). philippines / latam = estimated GKP bill rate (USD/hour, full-time). usLoadedMultiplier covers US payroll taxes, benefits, PTO, equipment and overhead. Sources (Oct 2026): BLS May 2025 medians for US pay; SecondTalent, Terminal and Lemon.io rate guides for offshore/nearshore.",
+  "usLoadedMultiplier": 1.3,
+  "hoursPerYear": 2080,
+  "regions": {
+    "philippines": "Philippines (offshore)",
+    "latam": "Latin America (nearshore)"
+  },
+  "roles": [
+    { "id": "python",     "label": "Python Engineer",              "usSalary": 135000, "philippines": 35, "latam": 60 },
+    { "id": "ml",         "label": "Machine Learning Engineer",    "usSalary": 165000, "philippines": 45, "latam": 75 },
+    { "id": "devops",     "label": "DevOps / SRE Engineer",        "usSalary": 145000, "philippines": 40, "latam": 68 },
+    { "id": "azure",      "label": "Azure Cloud Developer",        "usSalary": 135000, "philippines": 38, "latam": 62 },
+    { "id": "sfqa",       "label": "Salesforce QA Engineer",       "usSalary": 105000, "philippines": 28, "latam": 48 },
+    { "id": "iam",        "label": "IAM / Security Engineer",      "usSalary": 135000, "philippines": 40, "latam": 65 },
+    { "id": "scrum",      "label": "Scrum Master",                 "usSalary": 120000, "philippines": 32, "latam": 55 },
+    { "id": "oracle",     "label": "Oracle ERP Specialist",        "usSalary": 135000, "philippines": 42, "latam": 68 }
+  ]
+}
