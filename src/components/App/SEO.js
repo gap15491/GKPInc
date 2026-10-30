@@ -6,6 +6,10 @@ const SEO = () => {
       <div>
         <Helmet>
           <title>GKP Solutions</title>
+          <link rel='icon' type='image/png' sizes='32x32' href='/favicon-32x32.png?v=2' />
+          <link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=2' />
+          <link rel='shortcut icon' href='/favicon.ico?v=2' />
+          <link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png?v=2' />
           <meta name='description' content='GKP Solutions IT for Technology Staffing' />
           <meta
             name='og:title'
