@@ -96,7 +96,9 @@ function calcSavings(roleKey, region, teamSize, syncedTitles = []) {
   const team = Math.min(MAX_TEAM, Math.max(1, Math.round(Number(teamSize) || 1)))
 
   const usPerPerson = Math.round(role.usSalary * rates.usLoadedMultiplier)
-  const gkpPerPerson = Math.round(role[region] * rates.hoursPerYear)
+  // GKP rate = market rate for the country × gkpRateMultiplier (0.9 = 10% below market)
+  const hourly = Math.round(role[region] * (rates.gkpRateMultiplier || 1) * 100) / 100
+  const gkpPerPerson = Math.round(hourly * rates.hoursPerYear)
   const usTotal = usPerPerson * team
   const gkpTotal = gkpPerPerson * team
   const savings = usTotal - gkpTotal
@@ -112,7 +114,7 @@ function calcSavings(roleKey, region, teamSize, syncedTitles = []) {
     savings,
     savingsPct: usTotal > 0 ? Math.round((savings / usTotal) * 100) : 0,
     usSalary: role.usSalary,
-    hourlyRate: role[region],
+    hourlyRate: hourly,
   }
 }
 

@@ -170,7 +170,7 @@ function savingsReportHtml(name, s) {
     </table>
     <p style="font-size:13px;color:#6b7280">How we estimate: US cost is a typical base salary of ${money(s.usSalary)} plus about
       ${Math.round((savingsRates.usLoadedMultiplier - 1) * 100)}% for payroll taxes, benefits and overhead. GKP cost assumes a
-      full-time contractor at about $${s.hourlyRate}/hour (${savingsRates.hoursPerYear.toLocaleString('en-US')} hours/year).
+      full-time contractor at about $${s.hourlyRate.toFixed(2)}/hour (${savingsRates.hoursPerYear.toLocaleString('en-US')} hours/year).
       Your actual quote depends on seniority, skills and engagement length.</p>
     <p>I'd be glad to put together an exact quote and share a few sample candidate profiles for this role.
       Just reply to this email and let me know a good time to talk.</p>`)
