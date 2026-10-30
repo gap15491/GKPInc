@@ -173,6 +173,10 @@ const SavingsCalculator = () => {
 
               {result && (
                 <div style={styles.card} aria-live='polite'>
+                  <p style={{ margin: '0 0 16px', fontSize: 14, color: '#6b7280', fontStyle: 'italic' }}>
+                    * These numbers are general estimates only. Figures may fluctuate up or down depending on
+                    the specific technical skill requirements in a job description.
+                  </p>
                   <div className='row'>
                     <div className='col-lg-4 col-md-4 mb-3'>
                       <div style={styles.stat}>
@@ -190,7 +194,7 @@ const SavingsCalculator = () => {
                     </div>
                     <div className='col-lg-4 col-md-4 mb-3'>
                       <div style={{ ...styles.stat, background: ACCENT, borderColor: ACCENT }}>
-                        <div style={{ ...styles.statLabel, color: '#ffe3d6' }}>Estimated savings</div>
+                        <div style={{ ...styles.statLabel, color: '#ffe3d6' }}>Estimated savings*</div>
                         <div style={{ ...styles.statValue, color: '#fff' }}>{money(result.savings)}</div>
                         <div style={{ ...styles.statLabel, color: '#ffe3d6' }}>per year · {result.savingsPct}% less</div>
                       </div>
