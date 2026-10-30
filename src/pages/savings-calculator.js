@@ -15,7 +15,20 @@ const styles = {
     padding: '28px 24px',
     marginBottom: 24,
   },
-  label: { fontWeight: 600, marginBottom: 8, display: 'block' },
+  label: { fontWeight: 600, marginBottom: 2, display: 'block' },
+  hint: { fontSize: 13, color: '#6b7280', marginBottom: 8, display: 'block' },
+  // Makes the dropdowns look clickable: white box, border and a down-arrow on the right
+  select: {
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    background: "#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ff5d22' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\") no-repeat right 16px center",
+    border: '1px solid #cfd4dc',
+    borderRadius: 8,
+    paddingRight: 44,
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+  },
   stat: {
     borderRadius: 10,
     padding: '18px 16px',
@@ -104,7 +117,8 @@ const SavingsCalculator = () => {
                 <div className='row'>
                   <div className='col-lg-6 col-md-12 mb-4'>
                     <label htmlFor='role' style={styles.label}>Role</label>
-                    <select id='role' className='form-control' value={roleId}
+                    <span style={styles.hint}>Select a role from the list below</span>
+                    <select id='role' className='form-control' style={styles.select} value={roleId}
                       onChange={(e) => setRoleId(e.target.value)}>
                       <optgroup label='Popular roles'>
                         {rates.roles.map((r) => (
@@ -122,6 +136,7 @@ const SavingsCalculator = () => {
                   </div>
                   <div className='col-lg-6 col-md-12 mb-4'>
                     <label htmlFor='team' style={styles.label}>Team size</label>
+                    <span style={styles.hint}>How many people do you need?</span>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button type='button' className='form-control' aria-label='Fewer people'
                         style={{ width: 56, flex: 'none', fontSize: 22, padding: 0 }} onClick={() => bump(-1)}>−</button>
@@ -135,7 +150,8 @@ const SavingsCalculator = () => {
                   </div>
                   <div className='col-12'>
                     <label htmlFor='region' style={styles.label}>Where would your team be?</label>
-                    <select id='region' className='form-control' value={region}
+                    <span style={styles.hint}>Select a location from the list below</span>
+                    <select id='region' className='form-control' style={styles.select} value={region}
                       onChange={(e) => setRegion(e.target.value)}>
                       {Object.entries(rates.regions).map(([key, label]) => (
                         <option key={key} value={key}>{label}</option>
