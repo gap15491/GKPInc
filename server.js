@@ -371,6 +371,31 @@ const sendPlacementStats = async (req, res) => res.json(await getPlacementStats(
 app.get('/api/placement-stats', sendPlacementStats)
 app.get('/api/placement-countries', sendPlacementStats) // older name, kept so nothing breaks
 
+// Website leads for the Sales page in the GKP Placements app.
+// GET /api/leads?after=<id> returns contact-form and Savings Calculator submissions newer than <id>.
+// Protected by the same secret as the placement stats (PLACEMENTS_STATS_TOKEN here,
+// PUBLIC_STATS_TOKEN on the placements app); without it the endpoint is turned off.
+app.get('/api/leads', async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  const token = (process.env.PLACEMENTS_STATS_TOKEN || '').trim()
+  const given = (req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim()
+  const crypto = require('crypto')
+  const same = (a, b) => crypto.timingSafeEqual(
+    crypto.createHash('sha256').update(a).digest(), crypto.createHash('sha256').update(b).digest())
+  if (!token || !given || !same(given, token)) return res.status(404).json({ error: 'Not found' })
+  if (!pool) return res.json({ leads: [] })
+  const after = Math.max(0, parseInt(req.query.after, 10) || 0)
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, created_at, name, email, phone, business_name, job_title, location, interest, message
+       FROM contact_requests WHERE id > $1 ORDER BY id ASC LIMIT 200`, [after])
+    res.json({ leads: rows })
+  } catch (err) {
+    console.error('Leads export failed:', err.message)
+    res.status(500).json({ error: 'Could not read leads' })
+  }
+})
+
 app.get('/healthz', (req, res) => res.send('ok'))
 
 app.use('/admin', adminRouter({ pool, config, resendSend, escapeHtml }))
