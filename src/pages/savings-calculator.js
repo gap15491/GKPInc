@@ -30,7 +30,7 @@ const styles = {
 const SavingsCalculator = () => {
   const [roleId, setRoleId] = useState(rates.roles[0].id)
   const [region, setRegion] = useState('philippines')
-  const [team, setTeam] = useState('3')
+  const [team, setTeam] = useState('1')
   const [lead, setLead] = useState({ name: '', email: '', company: '', website: '' })
   const [status, setStatus] = useState({ state: 'idle', text: '' })
   const [placed, setPlaced] = useState([])
