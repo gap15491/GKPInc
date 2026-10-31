@@ -1,5 +1,5 @@
 {
-  "_readme": "Edit these numbers to change the Savings Calculator. usSalary = typical US base salary (USD/yr). Each country column = estimated GKP bill rate (USD/hour, full-time). To add a country, add it to 'regions' and give every role a rate under the same key. usLoadedMultiplier covers US payroll taxes, benefits, PTO, equipment and overhead. Sources (Oct 2026): BLS May 2025 medians for US pay; SecondTalent, Terminal, Full Scale rate guides for offshore/nearshore. gkpRateMultiplier scales every country rate (0.9 = 10% below the market rates listed here; 1 = no discount). It does not change the US costs.",
+  "_readme": "Edit these numbers to change the Savings Calculator. usSalary = typical US base salary (USD/yr). Each country column = estimated GKP bill rate (USD/hour, full-time). To add a country, add it to 'regions' and give every role a rate under the same key. usLoadedMultiplier covers US payroll taxes, benefits, PTO, equipment and overhead. Sources (Oct 2026): BLS May 2025 medians for US pay; SecondTalent, Terminal, Full Scale rate guides for offshore/nearshore. gkpRateMultiplier scales every country rate (0.95 = 5% below the market rates listed here; 1 = no discount). It does not change the US costs.",
   "usLoadedMultiplier": 1.3,
   "hoursPerYear": 2080,
   "gkpRateMultiplier": 0.95,
@@ -115,8 +115,26 @@
     ]
   },
   "families": {
-    "_readme": "Rate groups used ONLY for job titles synced from the Placements app (not shown as their own choices). Each synced title is matched to one of these, or to a Popular role, by keywords in src/data/savings-calc.js. Same columns as 'roles'.",
+    "_readme": "Rate groups used ONLY for job titles synced from the Placements app (not shown as their own choices). Each synced title is matched to one of these, or to a Popular role, by keywords in src/data/savings-calc.js. Same columns as 'roles'. QA: qa_manual rates are about 15% below qa_auto (manual testers cost 10-20% less than automation engineers).",
     "list": [
+      {
+        "id": "qa_auto",
+        "label": "QA Automation Engineer / SDET",
+        "usSalary": 115000,
+        "philippines": 30,
+        "argentina": 42,
+        "indonesia": 28,
+        "india": 27
+      },
+      {
+        "id": "qa_manual",
+        "label": "QA Engineer (manual testing)",
+        "usSalary": 95000,
+        "philippines": 25.5,
+        "argentina": 36,
+        "indonesia": 24,
+        "india": 23
+      },
       {
         "id": "architect",
         "label": "Solutions / Cloud Architect",

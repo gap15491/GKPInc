@@ -17,7 +17,9 @@ const BASES = [...rates.roles, ...((rates.families && rates.families.list) || []
 
 // First matching rule wins, so more specific patterns come first.
 const RULES = [
-  [/\bqa\b|quality|test|sdet/i, 'sfqa'],
+  [/salesforce.*(\bqa\b|test)|(\bqa\b|test).*salesforce/i, 'sfqa'],
+  [/automat|sdet|selenium|cypress|playwright|appium|test eng.*code/i, 'qa_auto'],
+  [/\bqa\b|quality|test/i, 'qa_manual'],
   [/machine learning|mlops|\bml\b|\bai\b|data scien|deep learning|\bllm\b|nlp|computer vision/i, 'ml'],
   [/architect/i, 'architect'],
   [/devops|\bsre\b|site reliab|platform eng|kubernetes|infrastructure|release eng|build eng/i, 'devops'],
