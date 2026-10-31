@@ -97,7 +97,11 @@ const SavingsCalculator = () => {
     <Layout>
       <Navbar />
 
-      <div className='page-title-area'>
+      <style>{`
+        .calc-title { padding-top: 30px !important; padding-bottom: 24px !important; }
+        @media (max-width: 991px) { .calc-title { padding-top: 20px !important; padding-bottom: 16px !important; } }
+      `}</style>
+      <div className='page-title-area calc-title'>
         <div className='container'>
           <div className='page-title-content'>
             <h2>Offshore Savings Calculator</h2>
