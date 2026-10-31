@@ -104,9 +104,9 @@ const SavingsCalculator = () => {
       <div className='page-title-area calc-title'>
         <div className='container'>
           <div className='page-title-content'>
-            <h2>Offshore Savings Calculator</h2>
+            <h2>Global Savings Calculator</h2>
             <p className='mt-3'>
-              See what a GKP offshore or nearshore team could save you compared with hiring in the US.
+              See what a GKP global team could save you compared with hiring in the US.
             </p>
           </div>
         </div>
