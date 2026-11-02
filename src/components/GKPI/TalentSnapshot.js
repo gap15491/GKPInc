@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'gatsby'
+import { BOOKINGS_URL } from '../../data/site'
 
 // Homepage strip with live numbers from the GKP Placements app (via /api/placement-stats):
 // how many countries GKP talent is working in today, and how many clients GKP has served.
@@ -39,9 +40,9 @@ const TalentSnapshot = () => {
             <Link to='/request-talent' className='default-btn'>
               <i className='flaticon-right'></i>Request Talent<span></span>
             </Link>
-            <Link to='/book-a-call' className='default-btn' style={{ background: '#1f2430' }}>
+            <a href={BOOKINGS_URL} target='_blank' rel='noopener noreferrer' className='default-btn' style={{ background: '#1f2430' }}>
               <i className='flaticon-right'></i>Book a Call<span></span>
-            </Link>
+            </a>
           </div>
         </div>
         {snap && (snap.countries > 0 || snap.clients > 0) && (
