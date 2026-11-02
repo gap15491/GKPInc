@@ -3,6 +3,7 @@ import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
+import { BOOKINGS_URL } from '../data/site'
 
 // CIO Roundtable: lists upcoming virtual sessions scheduled in the GKP Placements app
 // (via /api/roundtable-sessions) and registers people (/api/roundtable-register).
@@ -174,7 +175,7 @@ const CioRoundtable = () => {
               )}
 
               <p style={{ fontSize: 14, color: '#6b7280' }}>
-                Want to talk one-on-one instead? <Link to='/book-a-call' style={{ color: ACCENT }}>Book a call with Gary</Link>.
+                Want to talk one-on-one instead? <a href={BOOKINGS_URL} target='_blank' rel='noopener noreferrer' style={{ color: ACCENT }}>Book a call with Gary</a>.
               </p>
             </div>
           </div>

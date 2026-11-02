@@ -3,6 +3,7 @@ import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
+import { BOOKINGS_URL } from '../data/site'
 
 const INTERESTS = [
   'Staff Augmentation',
@@ -77,7 +78,7 @@ const Contact = () => {
           <div className='row justify-content-center'>
             <div className='col-lg-10 col-md-12'>
               <p style={{ background: '#fff3ee', borderRadius: 10, padding: '12px 16px', color: '#4b5563', marginBottom: 24 }}>
-                Prefer to talk? <Link to='/book-a-call' style={{ color: '#ff5d22', fontWeight: 600 }}>Book a call</Link> at a time
+                Prefer to talk? <a href={BOOKINGS_URL} target='_blank' rel='noopener noreferrer' style={{ color: '#ff5d22', fontWeight: 600 }}>Book a call</a> at a time
                 that suits you. Know who you need? <Link to='/request-talent' style={{ color: '#ff5d22', fontWeight: 600 }}>Request talent</Link>.
               </p>
               <div className='contact-form'>

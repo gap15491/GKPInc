@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
+import { BOOKINGS_URL } from '../data/site'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
 import { rates, cleanSyncedTitles } from '../data/savings-calc'
@@ -240,9 +241,9 @@ const RequestTalent = () => {
                   <button type='button' className='default-btn' onClick={() => setStatus({ state: 'idle', text: '' })}>
                     <i className='flaticon-right'></i>Request another role<span></span>
                   </button>
-                  <Link className='default-btn ml-2' to='/book-a-call' style={{ background: '#1f2430' }}>
+                  <a className='default-btn ml-2' href={BOOKINGS_URL} target='_blank' rel='noopener noreferrer' style={{ background: '#1f2430' }}>
                     <i className='flaticon-right'></i>Book a call now<span></span>
-                  </Link>
+                  </a>
                 </div>
               ) : (
                 <form onSubmit={submit}>

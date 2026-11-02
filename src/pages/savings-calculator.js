@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
+import { BOOKINGS_URL } from '../data/site'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
 import { rates, calcSavings, cleanSyncedTitles, money, MAX_TEAM, SYNCED_PREFIX } from '../data/savings-calc'
@@ -229,9 +230,9 @@ const SavingsCalculator = () => {
                       to={`/request-talent?role=${encodeURIComponent(result.roleLabel)}&team=${result.team}&loc=${region}`}>
                       <i className='flaticon-right'></i>Request this team<span></span>
                     </Link>
-                    <Link className='default-btn ml-2' to='/book-a-call' style={{ background: '#1f2430' }}>
+                    <a className='default-btn ml-2' href={BOOKINGS_URL} target='_blank' rel='noopener noreferrer' style={{ background: '#1f2430' }}>
                       <i className='flaticon-right'></i>Book a call<span></span>
-                    </Link>
+                    </a>
                     <span style={{ marginLeft: 12, fontSize: 14, color: '#6b7280' }}>Get a real quote for your team.</span>
                   </div>
                 </div>

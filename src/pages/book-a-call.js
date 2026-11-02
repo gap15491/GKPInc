@@ -3,22 +3,23 @@ import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
+import { BOOKINGS_URL } from '../data/site'
 
-// "Book a Call": embeds Gary's Microsoft Bookings page. The link comes from the BOOKINGS_URL
-// variable on the website service in Railway (read at runtime via /api/site-config), so it can be
-// changed without editing code. Until it's set, the page shows phone/email instead.
+// "Book a Call": sends visitors to Gary's Microsoft Bookings calendar (opens in a new tab;
+// personal Bookings pages can't always be shown inside another site). The link lives in
+// src/data/site.js; a BOOKINGS_URL variable in Railway overrides it.
 
 const ACCENT = '#ff5d22'
 const card = { background: '#fff', borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.07)', padding: '24px', marginBottom: 24 }
 
 const BookACall = () => {
-  const [cfg, setCfg] = useState({ loading: true, bookingsUrl: '' })
-
+  // Optional override from the BOOKINGS_URL variable in Railway; otherwise the link in src/data/site.js
+  const [url, setUrl] = useState(BOOKINGS_URL)
   useEffect(() => {
     fetch('/api/site-config')
       .then((r) => (r.ok ? r.json() : {}))
-      .then((d) => setCfg({ loading: false, bookingsUrl: (d && d.bookingsUrl) || '' }))
-      .catch(() => setCfg({ loading: false, bookingsUrl: '' }))
+      .then((d) => { if (d && d.bookingsUrl) setUrl(d.bookingsUrl) })
+      .catch(() => {})
   }, [])
 
   return (
@@ -44,40 +45,35 @@ const BookACall = () => {
         <div className='container'>
           <div className='row justify-content-center'>
             <div className='col-lg-10 col-md-12'>
-              {cfg.loading ? (
-                <div style={{ ...card, color: '#6b7280' }}>Loading the calendar…</div>
-              ) : cfg.bookingsUrl ? (
-                <>
-                  <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-                    <iframe title='Book a call with GKP Solutions' src={cfg.bookingsUrl}
-                      style={{ width: '100%', height: 1050, border: 0, display: 'block' }} loading='lazy' />
+              <div style={{ ...card, borderTop: `4px solid ${ACCENT}` }}>
+                <div className='row align-items-center'>
+                  <div className='col-lg-7 col-md-12 mb-3'>
+                    <h3 style={{ fontSize: 24, marginBottom: 8 }}>Pick a time on my calendar</h3>
+                    <p style={{ color: '#4b5563', marginBottom: 6 }}>
+                      Choose any open slot that suits you. Microsoft sends you a calendar invite as soon as you book.
+                    </p>
+                    <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 0 }}>— Gary Peck, Founder &amp; CEO</p>
                   </div>
-                  <p style={{ fontSize: 14, color: '#6b7280' }}>
-                    Calendar not loading?{' '}
-                    <a href={cfg.bookingsUrl} target='_blank' rel='noopener noreferrer' style={{ color: ACCENT }}>
-                      Open the booking page in a new tab
-                    </a>.
-                  </p>
-                </>
-              ) : (
-                <div style={card}>
-                  <h3 style={{ fontSize: 22 }}>Let's find a time</h3>
-                  <p style={{ color: '#4b5563' }}>
-                    Call or email me directly and we'll set up a time that suits you.
-                  </p>
-                  <p style={{ fontSize: 18, marginBottom: 6 }}>
-                    <i className='bx bx-phone-call' style={{ color: ACCENT, marginRight: 8 }}></i>
-                    <a href='tel:+16159444405'>+1 (615) 944-4405</a>
-                  </p>
-                  <p style={{ fontSize: 18 }}>
-                    <i className='bx bx-envelope' style={{ color: ACCENT, marginRight: 8 }}></i>
-                    <a href='mailto:gary@gkpsolutions.net'>gary@gkpsolutions.net</a>
-                  </p>
-                  <Link to='/contact' className='default-btn'>
-                    <i className='flaticon-right'></i>Send a message instead<span></span>
-                  </Link>
+                  <div className='col-lg-5 col-md-12 mb-3' style={{ textAlign: 'center' }}>
+                    <a href={url} target='_blank' rel='noopener noreferrer' className='default-btn'
+                      style={{ fontSize: 17, padding: '14px 28px 14px 54px' }}>
+                      <i className='flaticon-right'></i>Open my booking calendar<span></span>
+                    </a>
+                    <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 10 }}>Opens Microsoft Bookings in a new tab</div>
+                  </div>
                 </div>
-              )}
+              </div>
+              <div style={card}>
+                <h4 style={{ fontSize: 18, marginBottom: 12 }}>Prefer to reach me directly?</h4>
+                <p style={{ fontSize: 17, marginBottom: 6 }}>
+                  <i className='bx bx-phone-call' style={{ color: ACCENT, marginRight: 8 }}></i>
+                  <a href='tel:+16159444405'>+1 (615) 944-4405</a>
+                </p>
+                <p style={{ fontSize: 17, marginBottom: 0 }}>
+                  <i className='bx bx-envelope' style={{ color: ACCENT, marginRight: 8 }}></i>
+                  <a href='mailto:gary@gkpsolutions.net'>gary@gkpsolutions.net</a>
+                </p>
+              </div>
               <p style={{ fontSize: 14, color: '#6b7280' }}>
                 Already know who you need? <Link to='/request-talent' style={{ color: ACCENT }}>Send us a talent request</Link> and
                 we'll come prepared.
