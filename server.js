@@ -16,6 +16,7 @@
 //                   (default uses Resend's test sender until your domain is verified)
 //   ADMIN_PASSWORD  Password for /admin (the admin page is disabled until this is set)
 //   ADMIN_USER      Username for /admin (default "admin")
+//   BOOKINGS_URL    Your Microsoft Bookings page link, for the "Book a Call" page (optional)
 //   PORT            Set by Railway
 
 const path = require('path')
@@ -68,7 +69,8 @@ async function initDb() {
     ALTER TABLE contact_requests
       ADD COLUMN IF NOT EXISTS status       TEXT NOT NULL DEFAULT 'new',
       ADD COLUMN IF NOT EXISTS email_status TEXT,
-      ADD COLUMN IF NOT EXISTS email_detail TEXT`)
+      ADD COLUMN IF NOT EXISTS email_detail TEXT,
+      ADD COLUMN IF NOT EXISTS ref          TEXT`)
   console.log('Database ready (contact_requests table).')
 }
 
@@ -91,7 +93,7 @@ function rateLimited(ip) {
 
 // Sends through Resend. Always resolves to { ok, detail } so callers can record what happened.
 // By default it notifies Gary (NOTIFY_EMAIL); pass `to`/`from` to email a visitor instead.
-async function resendSend({ subject, html, replyTo, to, from }) {
+async function resendSend({ subject, html, replyTo, to, from, attachments }) {
   const c = config()
   const recipients = to ? [].concat(to) : c.notify
   if (!c.apiKey) return { ok: false, detail: 'RESEND_API_KEY is not set on this service.' }
@@ -105,6 +107,7 @@ async function resendSend({ subject, html, replyTo, to, from }) {
         ...(replyTo ? { reply_to: replyTo } : {}),
         subject,
         html,
+        ...(attachments ? { attachments } : {}),
       }),
     })
     const text = await res.text()
@@ -458,7 +461,7 @@ app.post('/api/savings-report', async (req, res) => {
 // Refreshed at most once an hour; if the app can't be reached, the last good copy is used.
 let placementCache = { at: 0, data: null }
 async function getPlacementStats() {
-  const empty = { countries: [], roles: [] }
+  const empty = { countries: [], roles: [], snapshot: { countries: 0, clients: 0 } }
   const url = (process.env.PLACEMENTS_STATS_URL || '').trim()
   const token = (process.env.PLACEMENTS_STATS_TOKEN || '').trim()
   if (!url || !token) return empty
@@ -466,7 +469,7 @@ async function getPlacementStats() {
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    const { countries = [], total = 0, roles = [] } = await r.json()
+    const { countries = [], total = 0, roles = [], clients_served: clients = 0 } = await r.json()
     const TOP = 6
     const top = countries.slice(0, TOP)
     const rest = countries.slice(TOP).reduce((n, c) => n + c.count, 0)
@@ -476,6 +479,8 @@ async function getPlacementStats() {
         ? rows.map((c) => ({ country: String(c.country).slice(0, 40), share: Math.max(1, Math.round((c.count / total) * 100)) }))
         : [],
       roles: cleanSyncedTitles(roles),
+      // Homepage "talent snapshot": numbers only
+      snapshot: { countries: countries.length, clients: Number(clients) || 0 },
     }
     placementCache = { at: Date.now(), data }
     return data
@@ -505,13 +510,180 @@ app.get('/api/leads', async (req, res) => {
   const after = Math.max(0, parseInt(req.query.after, 10) || 0)
   try {
     const { rows } = await pool.query(
-      `SELECT id, created_at, name, email, phone, business_name, job_title, location, interest, message
+      `SELECT id, created_at, name, email, phone, business_name, job_title, location, interest, message, ref
        FROM contact_requests WHERE id > $1 ORDER BY id ASC LIMIT 200`, [after])
     res.json({ leads: rows })
   } catch (err) {
     console.error('Leads export failed:', err.message)
     res.status(500).json({ error: 'Could not read leads' })
   }
+})
+
+// Settings the static pages need at runtime (set in Railway > Variables, no rebuild needed).
+app.get('/api/site-config', (req, res) => {
+  const url = (process.env.BOOKINGS_URL || '').trim()
+  res.set('Cache-Control', 'no-store')
+  res.json({ bookingsUrl: /^https:\/\/[^\s"'<>]+$/.test(url) ? url : '' })
+})
+
+// --- CIO Roundtable ------------------------------------------------------------
+// Sessions are scheduled in the GKP Placements app (Roundtable tab). This server reads them with
+// the same secret as the placement stats, caches them for 5 minutes, and never shows the meeting link
+// publicly - it's only emailed to people who register.
+let rtCache = { at: 0, sessions: null }
+function placementsOrigin() {
+  try { return new URL((process.env.PLACEMENTS_STATS_URL || '').trim()).origin } catch (e) { return '' }
+}
+async function getRoundtableSessions(fresh) {
+  const origin = placementsOrigin()
+  const token = (process.env.PLACEMENTS_STATS_TOKEN || '').trim()
+  if (!origin || !token) return []
+  if (!fresh && rtCache.sessions && Date.now() - rtCache.at < 5 * 60 * 1000) return rtCache.sessions
+  try {
+    const r = await fetch(`${origin}/roundtable/api/public`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const { sessions = [] } = await r.json()
+    rtCache = { at: Date.now(), sessions: Array.isArray(sessions) ? sessions : [] }
+    return rtCache.sessions
+  } catch (err) {
+    console.error('Roundtable sessions unavailable:', err.message)
+    return rtCache.sessions || []
+  }
+}
+
+app.get('/api/roundtable-sessions', async (req, res) => {
+  const sessions = await getRoundtableSessions(false)
+  res.set('Cache-Control', 'no-store')
+  res.json({ sessions: sessions.map(({ join_url, ...pub }) => pub) })
+})
+
+const icsDate = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+const icsText = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/[,;]/g, (c) => '\\' + c).replace(/\r?\n/g, '\\n')
+function roundtableIcs(s, organizerEmail) {
+  const start = new Date(s.starts_at)
+  const end = new Date(start.getTime() + (s.duration_min || 60) * 60000)
+  const desc = [s.summary, s.join_url ? `Join: ${s.join_url}` : 'The meeting link will be emailed before the session.'].filter(Boolean).join('\n\n')
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GKP Solutions//CIO Roundtable//EN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT', `UID:gkp-roundtable-${s.id}@gkpsolutions.net`, `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(end)}`, `SUMMARY:${icsText('GKP CIO Roundtable: ' + s.title)}`,
+    `DESCRIPTION:${icsText(desc)}`, `LOCATION:${icsText(s.join_url || 'Virtual')}`,
+    `ORGANIZER;CN=Gary Peck:mailto:${organizerEmail}`, 'END:VEVENT', 'END:VCALENDAR', '',
+  ].join('\r\n')
+}
+function roundtableWhen(s) {
+  const d = new Date(s.starts_at)
+  const fmt = (tz) => d.toLocaleString('en-US', { timeZone: tz, weekday: 'long', month: 'long', day: 'numeric',
+    year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  return `${fmt('America/Chicago')} (${d.toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })})`
+}
+
+app.post('/api/roundtable-register', async (req, res) => {
+  const b = req.body || {}
+  if (clean(b.website, 200)) return res.json({ ok: true }) // honeypot
+  const r = {
+    name: clean(b.name, 200), email: clean(b.email, 200), company: clean(b.company, 200),
+    jobTitle: clean(b.jobTitle, 200), sessionId: parseInt(b.sessionId, 10),
+  }
+  if (!r.name || !r.company || !EMAIL_RE.test(r.email)) {
+    return res.status(400).json({ error: 'Please enter your name, a valid work email and your company.' })
+  }
+  // No session picked: join the invite list for future Roundtables
+  if (b.notify === true && !Number.isFinite(r.sessionId)) {
+    if (rateLimited(req.ip)) return res.status(429).json({ error: 'Too many requests. Please try again later.' })
+    let id = null
+    if (pool) {
+      try {
+        const { rows } = await pool.query(
+          `INSERT INTO contact_requests (name, email, business_name, job_title, interest, message, ref, ip, user_agent)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+          [r.name, r.email, r.company, r.jobTitle, 'CIO Roundtable',
+           'Asked to be invited to future CIO Roundtable sessions.', 'rt:list', req.ip, clean(req.get('user-agent'), 500)])
+        id = rows[0].id
+      } catch (err) { console.error('DB insert failed:', err.message) }
+    }
+    const sender = personalSender()
+    const reply = await resendSend({
+      to: r.email, from: sender.from, replyTo: sender.replyTo,
+      subject: "You're on the GKP CIO Roundtable invite list",
+      html: emailShell(`<p>Hi ${escapeHtml(firstName(r.name))},</p>
+        <p>Thanks for your interest in the GKP CIO Roundtable. You're on the invite list, and I'll email you as soon as
+          the next session is scheduled.</p>
+        <p>If there's a topic you'd like us to cover, just reply and let me know.</p>`),
+    })
+    const notify = await resendSend({
+      subject: `Roundtable invite list: ${r.name} – ${r.company}`, replyTo: r.email,
+      html: notificationHtml({ name: r.name, email: r.email, businessName: r.company, jobTitle: r.jobTitle,
+        interest: 'CIO Roundtable', message: 'Asked to be invited to future CIO Roundtable sessions.' }),
+    })
+    if (id === null && !reply.ok && !notify.ok) {
+      return res.status(500).json({ error: 'Sorry, something went wrong. Please email gary@gkpsolutions.net.' })
+    }
+    return res.json({ ok: true })
+  }
+
+  let s = (await getRoundtableSessions(false)).find((x) => x.id === r.sessionId)
+  if (!s) s = (await getRoundtableSessions(true)).find((x) => x.id === r.sessionId)
+  if (!s) return res.status(400).json({ error: 'That session is no longer open. Please choose another.' })
+  if (s.full) return res.status(400).json({ error: 'Sorry, that session is full.' })
+  if (rateLimited(req.ip)) return res.status(429).json({ error: 'Too many requests. Please try again later.' })
+
+  const when = roundtableWhen(s)
+  let id = null
+  if (pool) {
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO contact_requests
+          (name, email, business_name, job_title, interest, message, ref, ip, user_agent)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+        [r.name, r.email, r.company, r.jobTitle, 'CIO Roundtable',
+         `Registered for the CIO Roundtable: "${s.title}" on ${when}.`, `rt:${s.id}`, req.ip,
+         clean(req.get('user-agent'), 500)])
+      id = rows[0].id
+    } catch (err) {
+      console.error('DB insert failed:', err.message)
+    }
+  }
+
+  const sender = personalSender()
+  const organizer = (sender.from.match(/<([^>]+)>/) || [])[1] || 'gary@gkpsolutions.net'
+  const confirm = await resendSend({
+    to: r.email, from: sender.from, replyTo: sender.replyTo,
+    subject: `You're registered: GKP CIO Roundtable, ${new Date(s.starts_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })}`,
+    html: emailShell(`
+      <p>Hi ${escapeHtml(firstName(r.name))},</p>
+      <p>You're registered for the <b>GKP CIO Roundtable</b>. I'm glad you're joining us.</p>
+      <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:560px;border:1px solid #eceef2">
+        ${savingsRow('Session', escapeHtml(s.title), true)}
+        ${savingsRow('When', escapeHtml(when))}
+        ${savingsRow('Length', `${s.duration_min || 60} minutes`)}
+        ${savingsRow('Where', 'Virtual')}
+      </table>
+      ${s.join_url
+        ? `<p style="margin-top:18px"><a href="${escapeHtml(s.join_url)}" style="display:inline-block;background:#ff5d22;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold">Join link</a></p>`
+        : '<p style="margin-top:18px">I\'ll email you the meeting link before the session.</p>'}
+      <p>A calendar invite is attached. If you can no longer attend, just reply and let me know.</p>`),
+    attachments: [{ filename: 'gkp-cio-roundtable.ics',
+      content: Buffer.from(roundtableIcs(s, organizer)).toString('base64') }],
+  })
+  if (id === null && !confirm.ok) {
+    return res.status(500).json({ error: 'Sorry, we could not complete your registration. Please email gary@gkpsolutions.net.' })
+  }
+  const notify = await resendSend({
+    subject: `Roundtable registration: ${r.name} – ${r.company}`,
+    replyTo: r.email,
+    html: notificationHtml({ name: r.name, email: r.email, businessName: r.company, jobTitle: r.jobTitle,
+      interest: 'CIO Roundtable', message: `Registered for "${s.title}" on ${when}.` }),
+  })
+  console.log(`Roundtable registration ${r.email} for #${s.id}: saved=${id !== null}, confirm ${confirm.ok ? 'OK' : 'FAILED'} - ${confirm.detail}; notify ${notify.ok ? 'OK' : 'FAILED'}`)
+  if (id !== null) {
+    await pool.query('UPDATE contact_requests SET email_status=$1, email_detail=$2 WHERE id=$3',
+      [notify.ok ? 'sent' : 'failed',
+       `Notification: ${notify.detail} | Confirmation: ${confirm.ok ? 'sent' : 'FAILED'} - ${confirm.detail}`.slice(0, 1000), id])
+      .catch((err) => console.error('Email status update failed:', err.message))
+  }
+  res.json({ ok: true, hasLink: Boolean(s.join_url) })
 })
 
 app.get('/healthz', (req, res) => res.send('ok'))
