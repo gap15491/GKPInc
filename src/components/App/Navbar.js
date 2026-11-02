@@ -88,6 +88,15 @@ const NavbarTwo = () => {
 
                     <li className='nav-item'>
                       <Link
+                        to='/request-talent'
+                        activeClassName='active'
+                        className='nav-link'>
+                        Request Talent
+                      </Link>
+                    </li>
+
+                    <li className='nav-item'>
+                      <Link
                         to='/about-us'
                         activeClassName='active'
                         className='nav-link'>

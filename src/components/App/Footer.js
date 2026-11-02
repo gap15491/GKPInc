@@ -55,6 +55,9 @@ const Footer = () => {
                     <Link to='/savings-calculator'>Savings Calculator</Link>
                   </li>
                   <li>
+                    <Link to='/request-talent'>Request Talent</Link>
+                  </li>
+                  <li>
                     <Link to='/contact'>Contact Us</Link>
                   </li>
                 </ul>
