@@ -4,6 +4,8 @@
 //   the visitor a confirmation ("auto-reply") from Gary
 // - POST /api/savings-report emails a Savings Calculator breakdown to the visitor and
 //   saves them as a lead (rates are in src/data/savings-rates.json)
+// - POST /api/talent-request saves a "Request Talent" brief, emails Gary, and sends the
+//   visitor a copy of their request from Gary
 // - /admin is a password-protected page to review submissions
 //
 // Environment variables (set in Railway > Variables):
@@ -191,6 +193,60 @@ function notificationHtml(r) {
     <p style="font-family:Arial,sans-serif;white-space:pre-wrap">${escapeHtml(r.message)}</p>`
 }
 
+// --- Request Talent -----------------------------------------------------------
+const pick = (v, list) => (list.includes(v) ? v : '')
+const TALENT_OPTIONS = {
+  seniority: ['Junior', 'Mid-level', 'Senior', 'Lead / Architect', 'A mix'],
+  start: ['As soon as possible', 'Within 2 weeks', 'Within 30 days', 'In 1–3 months', 'Just exploring'],
+  engagement: ['Full-time contractor', 'Part-time', 'Project-based', 'Contract-to-hire', 'Not sure yet'],
+  locations: ['Philippines', 'Latin America', 'India', 'Indonesia', 'UK / Europe', 'Canada', 'No preference'],
+  timezone: ['US Eastern', 'US Central', 'US Mountain', 'US Pacific', 'Flexible / async is fine'],
+}
+
+function talentRows(t) {
+  return [
+    ['Role(s)', t.roles], ['How many', t.headcount], ['Seniority', t.seniority], ['Ideal start', t.start],
+    ['Engagement', t.engagement], ['Locations', t.locations.join(', ')], ['Hours overlap', t.timezone],
+    ['Budget', t.budget],
+  ].filter(([, v]) => v !== '' && v != null)
+}
+
+function talentTable(t) {
+  return `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:560px;border:1px solid #eceef2">
+    ${talentRows(t).map(([k, v]) => savingsRow(k, escapeHtml(v))).join('')}
+  </table>
+  ${t.details ? `<p style="margin:14px 0 4px;color:#6b7280">Skills and details</p>
+    <p style="white-space:pre-wrap;margin:0;padding:12px;background:#f8f9fb;border:1px solid #eceef2">${escapeHtml(t.details)}</p>` : ''}`
+}
+
+function talentSummary(t) {
+  return [
+    `Talent request: ${t.headcount} × ${t.roles}`,
+    ...talentRows(t).slice(2).map(([k, v]) => `${k}: ${v}`),
+    t.details ? `\nDetails:\n${t.details}` : '',
+  ].filter(Boolean).join('\n')
+}
+
+function talentConfirmHtml(t) {
+  return emailShell(`
+    <p>Hi ${escapeHtml(firstName(t.name))},</p>
+    <p>Thank you for your talent request. I'll review it personally and get back to you within one business day
+      with rates, timing and how we'd source the right people.</p>
+    <p>Here's a copy of what you sent:</p>
+    ${talentTable(t)}
+    <p>If anything changes or you'd like to add a job description, just reply to this email.</p>`)
+}
+
+function talentNotifyHtml(t) {
+  return `
+    <h2 style="font-family:Arial,sans-serif">New talent request: ${escapeHtml(t.headcount)} × ${escapeHtml(t.roles)}</h2>
+    <table cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif">
+      ${[['Name', t.name], ['Email', t.email], ['Phone', t.phone], ['Company', t.company], ['Job title', t.jobTitle]]
+        .map(([k, v]) => `<tr><td style="color:#666">${k}</td><td><b>${escapeHtml(v || '—')}</b></td></tr>`).join('')}
+    </table>
+    <div style="font-family:Arial,sans-serif;margin-top:12px">${talentTable(t)}</div>`
+}
+
 // --- app -------------------------------------------------------------------
 const app = express()
 app.set('trust proxy', true)
@@ -263,6 +319,68 @@ app.post('/api/contact', async (req, res) => {
     ).catch((err) => console.error('Email status update failed:', err.message))
   }
 
+  res.json({ ok: true })
+})
+
+app.post('/api/talent-request', async (req, res) => {
+  const b = req.body || {}
+  if (clean(b.website, 200)) return res.json({ ok: true }) // honeypot
+
+  const n = parseInt(b.headcount, 10)
+  const t = {
+    name: clean(b.name, 200), email: clean(b.email, 200), phone: clean(b.phone, 50),
+    company: clean(b.company, 200), jobTitle: clean(b.jobTitle, 200),
+    roles: clean(b.roles, 300), headcount: Number.isFinite(n) ? Math.min(200, Math.max(1, n)) : 1,
+    seniority: pick(b.seniority, TALENT_OPTIONS.seniority), start: pick(b.start, TALENT_OPTIONS.start),
+    engagement: pick(b.engagement, TALENT_OPTIONS.engagement),
+    locations: (Array.isArray(b.locations) ? b.locations : []).filter((l) => TALENT_OPTIONS.locations.includes(l)).slice(0, 7),
+    timezone: pick(b.timezone, TALENT_OPTIONS.timezone), budget: clean(b.budget, 100), details: clean(b.details, 5000),
+  }
+  if (!t.name || !t.company || !t.roles || !EMAIL_RE.test(t.email)) {
+    return res.status(400).json({ error: 'Please fill in the role, your name, a valid email and your company.' })
+  }
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' })
+  }
+
+  const summary = talentSummary(t)
+  let id = null
+  if (pool) {
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO contact_requests
+          (name, email, phone, business_name, job_title, location, interest, message, ip, user_agent)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+        [t.name, t.email, t.phone, t.company, t.jobTitle, t.locations.join(', '), 'Talent request',
+         summary, req.ip, clean(req.get('user-agent'), 500)])
+      id = rows[0].id
+    } catch (err) {
+      console.error('DB insert failed:', err.message)
+    }
+  }
+
+  const notify = await resendSend({
+    subject: `Talent request: ${t.headcount} × ${t.roles} – ${t.company}`.slice(0, 200),
+    html: talentNotifyHtml(t),
+    replyTo: t.email,
+  })
+  if (id === null && !notify.ok) {
+    return res.status(500).json({ error: 'Sorry, we could not send your request. Please email gary@gkpsolutions.net.' })
+  }
+  const sender = personalSender()
+  const reply = await resendSend({
+    to: t.email, from: sender.from, replyTo: sender.replyTo,
+    subject: 'Your talent request with GKP Solutions',
+    html: talentConfirmHtml(t),
+  })
+  console.log(`Talent request from ${t.email}: saved=${id !== null}, notify ${notify.ok ? 'OK' : 'FAILED'} - ${notify.detail}; copy ${reply.ok ? 'OK' : 'FAILED'}`)
+  if (id !== null) {
+    await pool.query(
+      'UPDATE contact_requests SET email_status=$1, email_detail=$2 WHERE id=$3',
+      [notify.ok ? 'sent' : 'failed',
+       `Notification: ${notify.detail} | Copy to visitor: ${reply.ok ? 'sent' : 'FAILED'} - ${reply.detail}`.slice(0, 1000), id]
+    ).catch((err) => console.error('Email status update failed:', err.message))
+  }
   res.json({ ok: true })
 })
 
