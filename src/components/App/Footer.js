@@ -58,6 +58,12 @@ const Footer = () => {
                     <Link to='/request-talent'>Request Talent</Link>
                   </li>
                   <li>
+                    <Link to='/book-a-call'>Book a Call</Link>
+                  </li>
+                  <li>
+                    <Link to='/cio-roundtable'>CIO Roundtable</Link>
+                  </li>
+                  <li>
                     <Link to='/contact'>Contact Us</Link>
                   </li>
                 </ul>

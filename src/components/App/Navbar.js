@@ -32,6 +32,27 @@ const NavbarTwo = () => {
 
     return (
       <React.Fragment>
+        {/* Keeps the menu on one line now that it has more links */}
+        <style>{`
+          @media (min-width: 992px) {
+            .tarn-nav .navbar .navbar-nav .nav-item a { white-space: nowrap; }
+            .tarn-nav .navbar .others-option .default-btn { white-space: nowrap; }
+            .tarn-nav .navbar .others-option { flex-shrink: 0; }
+            .tarn-nav .navbar .navbar-nav { flex-wrap: nowrap; }
+          }
+          @media (min-width: 992px) and (max-width: 1399px) {
+            .tarn-nav .navbar .navbar-nav .nav-item { margin-left: 8px; margin-right: 8px; }
+            .tarn-nav .navbar .navbar-nav .nav-item a { font-size: 15.5px; }
+          }
+          @media (min-width: 992px) and (max-width: 1199px) {
+            .tarn-nav .navbar .navbar-nav .nav-item { margin-left: 6px; margin-right: 6px; }
+            .tarn-nav .navbar .navbar-nav .nav-item a { font-size: 14px; }
+            .tarn-nav .navbar-brand img { max-width: 120px; }
+            .nav-cta-long { display: none; }
+          }
+          .nav-cta-short { display: none; }
+          @media (min-width: 992px) and (max-width: 1199px) { .nav-cta-short { display: inline; } }
+        `}</style>
         <div id='navbar' className='navbar-area navbar-style-two'>
           <div className='tarn-nav'>
             <div className='container'>
@@ -97,6 +118,15 @@ const NavbarTwo = () => {
 
                     <li className='nav-item'>
                       <Link
+                        to='/cio-roundtable'
+                        activeClassName='active'
+                        className='nav-link'>
+                        CIO Roundtable
+                      </Link>
+                    </li>
+
+                    <li className='nav-item'>
+                      <Link
                         to='/about-us'
                         activeClassName='active'
                         className='nav-link'>
@@ -114,7 +144,8 @@ const NavbarTwo = () => {
                         onClick={() => setCollapsed(true)}
                         className='default-btn'>
                         <i className='flaticon-right'></i>
-                        Contact GKP Solutions <span></span>
+                        <b className='nav-cta-long' style={{ fontWeight: 'inherit' }}>Contact GKP Solutions</b>
+                        <b className='nav-cta-short' style={{ fontWeight: 'inherit' }}>Contact</b> <span></span>
                       </Link>
                     </div>
                   </div>
