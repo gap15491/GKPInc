@@ -25,6 +25,13 @@ const express = require('express')
 const { Pool } = require('pg')
 const adminRouter = require('./admin')
 const { rates: savingsRates, calcSavings, cleanSyncedTitles, money } = require('./src/data/savings-calc')
+const site = require('./src/data/site')
+const bookingsUrl = () => {
+  const u = (process.env.BOOKINGS_URL || '').trim()
+  return /^https:\/\/[^\s"'<>]+$/.test(u) ? u : site.BOOKINGS_URL
+}
+const bookLine = (text) =>
+  `<p>${text} <a href="${escapeHtml(bookingsUrl())}" style="color:#ff5d22;font-weight:bold">Book a time on my calendar</a>.</p>`
 
 const PORT = process.env.PORT || 8080
 const config = () => ({
@@ -149,6 +156,7 @@ function autoReplyHtml(r) {
     <p>Thank you for reaching out to GKP Solutions. I've received your request and will get back to you
       personally within one business day.</p>
     <p>If anything is time-sensitive, just reply to this email or call me directly at the number below.</p>
+    ${bookLine('Rather talk now?')}
     <p>In the meantime, you can see what an offshore or nearshore team could save you with our
       <a href="https://www.gkpsolutions.net/savings-calculator" style="color:#ff5d22">Savings Calculator</a>.</p>`)
 }
@@ -178,7 +186,8 @@ function savingsReportHtml(name, s) {
       full-time contractor at about $${s.hourlyRate.toFixed(2)}/hour (${savingsRates.hoursPerYear.toLocaleString('en-US')} hours/year).
       Your actual quote depends on seniority, skills and engagement length.</p>
     <p>I'd be glad to put together an exact quote and share a few sample candidate profiles for this role.
-      Just reply to this email and let me know a good time to talk.</p>`)
+      Just reply to this email, or pick a time that suits you.</p>
+    ${bookLine('Ready to talk it through?')}`)
 }
 
 function notificationHtml(r) {
@@ -237,7 +246,8 @@ function talentConfirmHtml(t) {
       with rates, timing and how we'd source the right people.</p>
     <p>Here's a copy of what you sent:</p>
     ${talentTable(t)}
-    <p>If anything changes or you'd like to add a job description, just reply to this email.</p>`)
+    <p>If anything changes or you'd like to add a job description, just reply to this email.</p>
+    ${bookLine('Want to talk it through sooner?')}`)
 }
 
 function talentNotifyHtml(t) {
@@ -521,9 +531,8 @@ app.get('/api/leads', async (req, res) => {
 
 // Settings the static pages need at runtime (set in Railway > Variables, no rebuild needed).
 app.get('/api/site-config', (req, res) => {
-  const url = (process.env.BOOKINGS_URL || '').trim()
   res.set('Cache-Control', 'no-store')
-  res.json({ bookingsUrl: /^https:\/\/[^\s"'<>]+$/.test(url) ? url : '' })
+  res.json({ bookingsUrl: bookingsUrl() })
 })
 
 // --- CIO Roundtable ------------------------------------------------------------
