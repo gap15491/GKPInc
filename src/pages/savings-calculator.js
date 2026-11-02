@@ -224,6 +224,13 @@ const SavingsCalculator = () => {
                     {result.team} × {result.roleLabel}, {result.regionLabel}. That's about{' '}
                     {money(result.savings / result.team)} saved per person, every year.
                   </p>
+                  <div style={{ marginTop: 18 }}>
+                    <Link className='default-btn'
+                      to={`/request-talent?role=${encodeURIComponent(result.roleLabel)}&team=${result.team}&loc=${region}`}>
+                      <i className='flaticon-right'></i>Request this team<span></span>
+                    </Link>
+                    <span style={{ marginLeft: 12, fontSize: 14, color: '#6b7280' }}>Tell us the details and get a real quote.</span>
+                  </div>
                 </div>
               )}
 
