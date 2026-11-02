@@ -229,7 +229,10 @@ const SavingsCalculator = () => {
                       to={`/request-talent?role=${encodeURIComponent(result.roleLabel)}&team=${result.team}&loc=${region}`}>
                       <i className='flaticon-right'></i>Request this team<span></span>
                     </Link>
-                    <span style={{ marginLeft: 12, fontSize: 14, color: '#6b7280' }}>Tell us the details and get a real quote.</span>
+                    <Link className='default-btn ml-2' to='/book-a-call' style={{ background: '#1f2430' }}>
+                      <i className='flaticon-right'></i>Book a call<span></span>
+                    </Link>
+                    <span style={{ marginLeft: 12, fontSize: 14, color: '#6b7280' }}>Get a real quote for your team.</span>
                   </div>
                 </div>
               )}

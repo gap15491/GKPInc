@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'gatsby'
 import Layout from '../components/App/Layout'
 import Navbar from '../components/App/Navbar'
 import Footer from '../components/App/Footer'
@@ -239,6 +240,9 @@ const RequestTalent = () => {
                   <button type='button' className='default-btn' onClick={() => setStatus({ state: 'idle', text: '' })}>
                     <i className='flaticon-right'></i>Request another role<span></span>
                   </button>
+                  <Link className='default-btn ml-2' to='/book-a-call' style={{ background: '#1f2430' }}>
+                    <i className='flaticon-right'></i>Book a call now<span></span>
+                  </Link>
                 </div>
               ) : (
                 <form onSubmit={submit}>
