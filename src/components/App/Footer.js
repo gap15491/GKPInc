@@ -14,7 +14,7 @@ const Footer = () => {
             <div className='col-lg-4 col-sm-6'>
               <div className='single-footer-widget'>
                 <a href='/' className='logo'>
-                  <img src={logo} alt='logo' />
+                  <img src={logo} alt='GKP Solutions logo' />
                 </a>
                 <p>
                   We empower businesses with superior global resources and
@@ -72,19 +72,25 @@ const Footer = () => {
 
             <div className='col-lg-2 col-sm-6'>
               <div className='single-footer-widget'>
-                {/*} <h3>Resources</h3>
+                <h3>Solutions</h3>
 
                 <ul className='footer-links-list'>
                   <li>
-                    <Link to='/services'>Services</Link>
+                    <Link to='/global-it-staffing'>Global IT Staffing</Link>
                   </li>
                   <li>
-                    <Link to='/testimonials'>Testimonials</Link>
+                    <Link to='/offshore-it-staffing'>Offshore IT Staffing</Link>
                   </li>
                   <li>
-                    <Link to='/case-studies'>Case Studies</Link>
+                    <Link to='/nearshore-it-staffing'>Nearshore IT Staffing</Link>
                   </li>
-                </ul>*/}
+                  <li>
+                    <Link to='/it-staffing-nashville'>IT Staffing Nashville</Link>
+                  </li>
+                  <li>
+                    <Link to='/insights'>Insights</Link>
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -131,7 +137,7 @@ const Footer = () => {
         </div>
 
         <div className='footer-map'>
-          <img src={footerMap} alt='footer-logo' />
+          <img src={footerMap} alt='' />
         </div>
       </footer>
     );
