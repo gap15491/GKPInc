@@ -101,7 +101,7 @@ const CioRoundtable = () => {
       <div className='page-title-area rt-title'>
         <div className='container'>
           <div className='page-title-content'>
-            <h2>CIO Roundtable</h2>
+            <h1 style={{ fontSize: 40, fontWeight: 700 }}>CIO Roundtable</h1>
             <p className='mt-3'>
               Small, virtual conversations for technology leaders on building and running global teams:
               what works offshore and nearshore, what doesn't, and what peers are doing right now.

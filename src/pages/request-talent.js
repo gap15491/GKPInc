@@ -217,7 +217,7 @@ const RequestTalent = () => {
       <div className='page-title-area rt-title'>
         <div className='container'>
           <div className='page-title-content'>
-            <h2>Request Talent</h2>
+            <h1 style={{ fontSize: 40, fontWeight: 700 }}>Request Talent</h1>
             <p className='mt-3'>
               Tell us who you need. We'll come back within one business day with rates, timing and
               how we'd find the right people.

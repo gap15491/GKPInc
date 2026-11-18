@@ -105,7 +105,7 @@ const SavingsCalculator = () => {
       <div className='page-title-area calc-title'>
         <div className='container'>
           <div className='page-title-content'>
-            <h2>Global Savings Calculator</h2>
+            <h1 style={{ fontSize: 40, fontWeight: 700 }}>Global Savings Calculator</h1>
             <p className='mt-3'>
               See what a GKP global team could save you compared with hiring in the US.
             </p>

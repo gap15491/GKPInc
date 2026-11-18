@@ -32,7 +32,7 @@ const BookACall = () => {
       <div className='page-title-area bc-title'>
         <div className='container'>
           <div className='page-title-content'>
-            <h2>Book a Call</h2>
+            <h1 style={{ fontSize: 40, fontWeight: 700 }}>Book a Call</h1>
             <p className='mt-3'>
               Pick a time that works for you. We'll talk through the roles you need, where they could be based,
               and what it would cost. No commitment.

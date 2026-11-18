@@ -64,7 +64,7 @@ const Contact = () => {
       <div className='page-title-area'>
         <div className='container'>
           <div className='page-title-content'>
-            <h2>Contact GKP Solutions</h2>
+            <h1 style={{ fontSize: 40, fontWeight: 700 }}>Contact GKP Solutions</h1>
             <p className='mt-3'>
               Tell us a little about your needs and we'll get back to you within
               one business day.
