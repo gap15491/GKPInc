@@ -8,3 +8,13 @@ import 'react-accessible-accordion/dist/fancy-example.css'
 import 'react-image-lightbox/style.css'
 import "./src/assets/css/style.css"
 import "./src/assets/css/responsive.css"
+// Search-engine tags (title, description, canonical, structured data) for every page.
+// Settings live in src/data/seo.js.
+import React from 'react'
+import SEO from './src/components/App/SEO'
+export const wrapPageElement = ({ element, props }) => (
+  <>
+    <SEO path={props.location.pathname} />
+    {element}
+  </>
+)
